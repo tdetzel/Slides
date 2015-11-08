@@ -1,0 +1,228 @@
+
+Linear Regression, Chap. 7
+========================================================
+author: Tom Detzel
+date: 11.5.15
+transition: fade
+transition-speed: slow
+
+```{r setup, include=FALSE}
+opts_chunk$set(cache=F)
+opts_chunk$set(dev = 'pdf')
+##setwd("/Users/tjd/Documents/R/IS606")
+
+library(ggplot2)
+library(ggthemes)
+library(psych)
+library(downloader)
+library(stats)
+
+## urbOwn <- read.csv("urbanOwner.csv", header=T, colClasses="character")
+## urbOwn <- urbOwn[,c(1:4)]
+## urbOwn[,c(2:4)] <- lapply(urbOwn[, c(2:4)], as.numeric)
+## summary(urbOwn)
+
+## cor.test(urbOwn[,2], urbOwn[,3])
+## urbOwn <- urbOwn[,c(1:3)]
+## save(urbOwn, file="urbOwn.RData")
+## names(urbOwn) <- c("State", "OwnPct", "UrbPct")
+
+```
+
+
+Urban Homeowners: Exercise 7.39
+========================================================
+
+Three variables:
+- State
+- Percent home ownership (dependent)
+- Percent urban population (explanatory)
+
+```{r echo=F}
+
+fileurl <- "https://github.com/tdetzel/Data/blob/master/urbOwn.RData?raw=true"
+download(fileurl, destfile = "urbOwn.RData")
+
+##if(!file.exists("urbOwn.RData")){
+##  download(fileurl, destfile = "urbOwn.RData")}
+
+# load data
+##setwd("/Users/tjd/Documents/R/IS606/Data")
+load("urbOwn.RData")
+
+```
+
+```{r}
+head(urbOwn,5)
+
+```
+
+Summary Stats - 1
+========================================================
+
+Check for skew, normality.
+- Median, mean are close.
+
+```{r echo=FALSE}
+
+summary(urbOwn[, c(2,3)])
+
+```
+
+Summary Stats - 2
+========================================================
+
+Check for skew: Negative, so left skewed.
+
+```{r echo=FALSE}
+myStats <- describe(urbOwn[, c(2,3)])
+```
+
+```{r}
+myStats[c(4,11,12,13)]
+
+```
+
+Not Exactly Normal
+====================================
+Percent Home Ownership
+
+```{r, echo=FALSE}
+hist(urbOwn[,2], main="", breaks=20, col="lightblue", xlab="Percent")
+abline(v=mean(urbOwn[,2]), lty=3, lwd=2, col="blue")
+text(53, 7.5, adj=c(0,0), paste(" Mean = ", round(mean(urbOwn[,2]),2), "\n", "Median = ", round(median(urbOwn[,2]), 2), "\n", "SD = ", round(sd(urbOwn[,2]), 2)))
+
+```
+
+***
+Percent Urban
+
+```{r, echo=FALSE}
+hist(urbOwn[,3], main="", breaks=20, col="wheat", xlab="Percent")
+abline(v=mean(urbOwn[,3]), lty=3, lwd=2, col="blue")
+text(35, 6.1, adj=c(0,0), paste(" Mean = ", round(mean(urbOwn[,3]),2), "\n", "Median = ", round(median(urbOwn[,3]), 2), "\n", "SD = ", round(sd(urbOwn[,3]), 2)))
+
+```
+
+Question 7.39, Part A
+========================================================
+
+(a) For these data,  ${ R }^{ 2 }$ = 0.28. What is the correlation? How can you tell if it is positive or negative?
+
+```{r, echo=F, include=TRUE}
+
+ggplot(urbOwn, aes(x=UrbPct, y=OwnPct)) +
+    geom_point(shape=1) +
+    geom_smooth(method=lm) +
+    theme_fivethirtyeight() +
+    labs(x="Percent Urban", y="Percent Ownership")
+
+#plot(urbOwn$UrbPct, urbOwn$OwnPct)
+#abline(lm(urbOwn$UrbPct~urbOwn$OwnPct), col="red")
+
+```
+
+
+Eyeballing It
+========================================================
+
+- Regression line slopes left to right: negative
+- Slope is mild, so correlation is weak
+- Correlation is $\sqrt { { R }^{ 2 } }$ =  `r round(sqrt(.28), 4)`
+- Check it using function cor.test()
+
+
+Question 7.39, Part A
+========================================================
+
+(a) For these data,  ${ R }^{ 2 }$ = 0.28. What is the correlation?
+- Use cor.test(y,x)
+
+```{r, echo=F}
+r <- with(urbOwn, cor.test(OwnPct, UrbPct))
+r[c(1,2,4)]
+
+```
+
+Question 7.39, Part B
+========================================================
+
+(b) Examine the residual plot. What do you observe? Is a simple least squares fit appropriate for these data?
+
+- Residuals = Data - Fit, vertical distance from fit line
+- Recreate the model so we can plot the residuals
+- Use fortify() function in ggplot2 to create plottable data
+
+```{r}
+ownFit <- lm(OwnPct~UrbPct, data=urbOwn)
+fOwn <- fortify(ownFit)
+head(fOwn[c(1,2,6,7)], 3)
+
+```
+
+Question 7.39, Part B
+========================================================
+
+(b) Examine the residual plot. What do you observe? Is a simple least squares fit appropriate for these data?
+
+- Plot the residuals and examine spread
+
+```{r eval=FALSE, include=TRUE, fig.keep='all'}
+
+ggplot(fOwn, aes(x=.fitted, y=.resid)) +
+    geom_point(shape=1) +
+    geom_hline(y=0, lty="dashed") +
+    theme_fivethirtyeight() +
+    labs(x="Fitted Values", y="Residuals")
+```
+
+Question 7.39, Part B
+========================================================
+
+(b) Is a simple least squares fit appropriate for these data?
+- Residuals appear random, so linear model is OK.
+
+```{r, ggplot2, echo=FALSE, include=TRUE, fig.keep='all', fig.show='asis'}
+ggplot(fOwn, aes(x=.fitted, y=.stdresid)) +
+    geom_point(shape=1) +
+    geom_hline(y=0, lty="dashed") +
+    geom_rug(sides="rt") +
+    theme_fivethirtyeight() +
+    labs(x="Fitted Values", y="Residuals")
+
+```
+
+Question 7.39, Part B
+========================================================
+
+(b) Is a simple least squares fit appropriate for these data?
+- Residuals appear approximately normal
+
+```{r, echo=FALSE, include=TRUE}
+
+ggplot(fOwn, aes(x=.resid)) +
+    geom_histogram(aes(y=..density..), col="red", fill="lightblue") +
+    geom_density(col=2) +
+    theme_fivethirtyeight() +
+    labs(x="Residuals")
+
+```
+
+Summary
+========================================================
+
+(b) Is a simple least squares fit appropriate for these data?
+
+- Linearity: Do data show a linear trend? Yes
+- Nearly normal residuals: Yes
+- Constant variability: Borderline, some spread at lower end
+- Independent Observations: Yes, but border cities could influence
+
+
+#### **Bottom Line:**
+*Conditions are partially met, but with an ${ R }^{ 2 }$ of only .28, you're not getting much bang for the buck out of this model. That's only 28 percent of the variability in the dependent variable (home ownership); other unidentified factors could be more important than the size of a state's urban population.*
+
+
+
+
+
